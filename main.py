@@ -1,4 +1,4 @@
-from flask import Flask, request
+from flask import Flask, request, Response
 import requests
 import os
 from dotenv import load_dotenv
@@ -15,9 +15,6 @@ VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")
 def home():
     return "Chatbot WhatsApp Flask rodando com sucesso!", 200
 
-from flask import Response
-
-@app.route("/", methods=["GET"])
 def verify():
     mode = request.args.get("hub.mode")
     token = request.args.get("hub.verify_token")
