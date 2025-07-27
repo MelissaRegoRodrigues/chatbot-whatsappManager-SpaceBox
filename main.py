@@ -12,9 +12,6 @@ PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
 VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")
 
 @app.route("/", methods=["GET"])
-def home():
-    return "Chatbot WhatsApp Flask rodando com sucesso!", 200
-
 def verify():
     mode = request.args.get("hub.mode")
     token = request.args.get("hub.verify_token")
