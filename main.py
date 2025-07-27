@@ -12,17 +12,20 @@ PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
 VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")
 
 @app.route("/", methods=["GET"])
-def verify():
+def verify_or_home():
     mode = request.args.get("hub.mode")
     token = request.args.get("hub.verify_token")
     challenge = request.args.get("hub.challenge")
 
-    if mode == "subscribe" and token == VERIFY_TOKEN:
-        print("Webhook verificado com sucesso!")
-        return Response(challenge, status=200)
-    else:
-        print("Falha na verificação do webhook.")
-        return Response("Unauthorized", status=403)
+    if mode and token and challenge:
+        if mode == "subscribe" and token == VERIFY_TOKEN:
+            print("Webhook verificado com sucesso!")
+            return Response(challenge, status=200)
+        else:
+            print("Falha na verificação do webhook.")
+            return Response("Unauthorized", status=403)
+
+    return "Chatbot WhatsApp Flask rodando com sucesso!", 200
 
 @app.route("/", methods=["POST"])
 def webhook():
