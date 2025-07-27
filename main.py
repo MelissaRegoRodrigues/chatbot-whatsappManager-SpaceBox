@@ -2,10 +2,17 @@ from flask import Flask, request, Response
 import requests
 import os
 from dotenv import load_dotenv
+import random
+import string
+from database import create_table, get_db_connection
 
 load_dotenv()
 
 app = Flask(__name__)
+
+if __name__ == "__main__":
+    create_table()
+    app.run(port=5000)
 
 WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN")
 PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
@@ -26,6 +33,58 @@ def verify_or_home():
             return Response("Unauthorized", status=403)
 
     return "Chatbot WhatsApp Flask rodando com sucesso!", 200
+
+@app.route("/send-code", methods=["POST"])
+def send_code():
+    data = request.get_json()
+    phone_number = data.get("phone_number")
+
+    if not phone_number:
+        return "Missing phone_number", 400
+
+    # Gere um código de autorização aleatório
+    auth_code = ''.join(random.choices(string.digits, k=6))
+    
+    # Armazene o código de autorização no banco de dados
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("INSERT INTO auth_codes (phone_number, code) VALUES (%s, %s) ON CONFLICT (phone_number) DO UPDATE SET code = %s", (phone_number, auth_code, auth_code))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    # Envie o código de autorização para o usuário
+    send_message(phone_number, f"Seu código de autorização é: {auth_code}")
+
+    return "Authorization code sent", 200
+
+@app.route("/verify-code", methods=["POST"])
+def verify_code():
+    data = request.get_json()
+    phone_number = data.get("phone_number")
+    code = data.get("code")
+
+    if not phone_number or not code:
+        return "Missing phone_number or code", 400
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT code FROM auth_codes WHERE phone_number = %s", (phone_number,))
+    result = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if result and result[0] == code:
+        # O código é válido, remova-o para que não possa ser usado novamente
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM auth_codes WHERE phone_number = %s", (phone_number,))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return "Authorization successful", 200
+    else:
+        return "Invalid authorization code", 400
 
 @app.route("/", methods=["POST"])
 def webhook():
