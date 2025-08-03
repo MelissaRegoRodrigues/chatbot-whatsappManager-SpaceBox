@@ -10,13 +10,10 @@ load_dotenv()
 
 app = Flask(__name__)
 
-if __name__ == "__main__":
-    create_table()
-    app.run(port=5000)
-
 WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN")
 PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
 VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")
+ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
 
 @app.route("/", methods=["GET"])
 def verify_or_home():
@@ -42,21 +39,23 @@ def send_code():
     if not phone_number:
         return "Missing phone_number", 400
 
-    # Gere um código de autorização aleatório
     auth_code = ''.join(random.choices(string.digits, k=6))
-    
-    # Armazene o código de autorização no banco de dados
+
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("INSERT INTO auth_codes (phone_number, code) VALUES (%s, %s) ON CONFLICT (phone_number) DO UPDATE SET code = %s", (phone_number, auth_code, auth_code))
+    cur.execute(
+        "INSERT INTO auth_codes (phone_number, code) VALUES (%s, %s) ON CONFLICT (phone_number) DO UPDATE SET code = %s",
+        (phone_number, auth_code, auth_code)
+    )
     conn.commit()
     cur.close()
     conn.close()
 
-    # Envie o código de autorização para o usuário
     send_message(phone_number, f"Seu código de autorização é: {auth_code}")
 
-    return "Authorization code sent", 200
+    response = send_message(phone_number, f"Seu código de autorização é: {auth_code}")
+
+    return (response.text, response.status_code, {'Content-Type': 'application/json'})
 
 @app.route("/verify-code", methods=["POST"])
 def verify_code():
@@ -75,7 +74,6 @@ def verify_code():
     conn.close()
 
     if result and result[0] == code:
-        # O código é válido, remova-o para que não possa ser usado novamente
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("DELETE FROM auth_codes WHERE phone_number = %s", (phone_number,))
@@ -109,7 +107,7 @@ def webhook():
 def send_message(to, text):
     url = f"https://graph.facebook.com/v19.0/{PHONE_NUMBER_ID}/messages"
     headers = {
-        "Authorization": f"Bearer {WHATSAPP_TOKEN}",
+        "Authorization": f"Bearer {ACCESS_TOKEN}",
         "Content-Type": "application/json"
     }
     payload = {
@@ -119,6 +117,9 @@ def send_message(to, text):
     }
     r = requests.post(url, json=payload, headers=headers)
     print("Resposta:", r.status_code, r.text)
+    return r
+
 
 if __name__ == "__main__":
+    create_table()
     app.run(port=5000)

@@ -1,10 +1,14 @@
 import psycopg2
+from dotenv import load_dotenv
 import os
+
+load_dotenv() 
 
 def get_db_connection():
     conn = psycopg2.connect(
-        host="db-postgres-spacebox",
-        database="postgres",
+        host=os.environ.get('DB_HOST', 'localhost'),
+        port=os.environ.get('DB_PORT', 5432),
+        database=os.environ.get('DB_NAME'),
         user=os.environ.get('POSTGRES_USER'),
         password=os.environ.get('POSTGRES_PASSWORD'))
     return conn
