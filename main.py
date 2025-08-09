@@ -35,11 +35,10 @@ def verify_or_home():
 def send_code():
     data = request.get_json()
     phone_number = data.get("phone_number")
+    auth_code = data.get("auth_code")
 
     if not phone_number:
         return "Missing phone_number", 400
-
-    auth_code = ''.join(random.choices(string.digits, k=6))
 
     conn = get_db_connection()
     cur = conn.cursor()
@@ -50,8 +49,6 @@ def send_code():
     conn.commit()
     cur.close()
     conn.close()
-
-    send_message(phone_number, f"Seu código de autorização é: {auth_code}")
 
     response = send_message(phone_number, f"Seu código de autorização é: {auth_code}")
 
@@ -104,8 +101,9 @@ def webhook():
 
     return "OK", 200
 
+
 def send_message(to, text):
-    url = f"https://graph.facebook.com/v19.0/{PHONE_NUMBER_ID}/messages"
+    url = f"https://graph.facebook.com/v22.0/{PHONE_NUMBER_ID}/messages"
     headers = {
         "Authorization": f"Bearer {ACCESS_TOKEN}",
         "Content-Type": "application/json"
