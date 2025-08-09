@@ -13,14 +13,13 @@ def get_db_connection():
         password=os.environ.get('POSTGRES_PASSWORD'))
     return conn
 
-def create_table():
+def upsert_auth_code(phone_number: str, auth_code: str):
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute('CREATE TABLE IF NOT EXISTS auth_codes ('
-                'phone_number VARCHAR(255) NOT NULL PRIMARY KEY,'
-                'code VARCHAR(6) NOT NULL,'
-                'created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP'
-                ');')
+    cur.execute(
+        'INSERT INTO "AuthCode" ("phoneNumber", "code") VALUES (%s, %s) ON CONFLICT ("phoneNumber") DO UPDATE SET "code" = %s',
+        (phone_number, auth_code, auth_code)
+    )
     conn.commit()
     cur.close()
     conn.close()

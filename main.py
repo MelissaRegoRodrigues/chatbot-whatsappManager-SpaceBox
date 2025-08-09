@@ -1,10 +1,11 @@
+import re
 from flask import Flask, request, Response
 import requests
 import os
 from dotenv import load_dotenv
 import random
 import string
-from database import create_table, get_db_connection
+from database import upsert_auth_code, get_db_connection
 
 load_dotenv()
 
@@ -39,13 +40,12 @@ def send_code():
 
     if not phone_number:
         return "Missing phone_number", 400
+    
+    phone_number = clean_phone_number(phone_number)
 
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO auth_codes (phone_number, code) VALUES (%s, %s) ON CONFLICT (phone_number) DO UPDATE SET code = %s",
-        (phone_number, auth_code, auth_code)
-    )
+    upsert_auth_code(phone_number, auth_code)
     conn.commit()
     cur.close()
     conn.close()
@@ -62,6 +62,8 @@ def verify_code():
 
     if not phone_number or not code:
         return "Missing phone_number or code", 400
+
+    phone_number = clean_phone_number(phone_number)
 
     conn = get_db_connection()
     cur = conn.cursor()
@@ -117,7 +119,8 @@ def send_message(to, text):
     print("Resposta:", r.status_code, r.text)
     return r
 
+def clean_phone_number(number):
+    return re.sub(r'\D', '', number)  # Remove tudo que não for dígito
 
 if __name__ == "__main__":
-    create_table()
     app.run(port=5000)
